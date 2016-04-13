@@ -26,8 +26,7 @@ if nargin < 3
     [FileName,PathName] = uigetfile('*.Markers','Select marker file');
     markerFile = fopen([PathName, FileName],'r');
 else
-    [~, ~, ext] = fileparts(i_markers);
-    if strcmp(ext,'.Markers')
+    if strcmp(i_markers,'.Markers')
         markerFile = fopen(i_markers,'r');
         
         % Markers Bad Interval
@@ -41,28 +40,27 @@ else
 
         clear markers colHeadings
         
-    elseif strcmp(ext,'.mat')
-        markers = load(i_markers);
-        markers = markers.Bad_Interval;
-        error = {markers.type}';
-        type = {markers.description}';
-        start = {markers.position}';
-        length = {markers.length}';
+    elseif isfield(i_markers,'Bad_Interval')
+        markers = i_markers.Bad_Interval;
+        errorMk = {markers.type}';
+        typeMk = {markers.description}';
+        startMk = {markers.position}';
+        lengthMk = {markers.length}';
         channelNumber = [markers.channelNumber];
         if any(channelNumber~=0)
             disp('@TODO convert number to electrode names')
             return
         else
-            channel=cell(size(error));
-            channel(:) = {'All'};
+            channelMk=cell(size(errorMk));
+            channelMk(:) = {'All'};
         end
-        markersBI = vertcat(error, ...
-                            type, ...
-                            start, ...
-                            length, ...
-                            channel);
-        markersBI = reshape(markersBI,size(error,1),5);
-        clear error type start length channel markers
+        markersBI = vertcat(errorMk, ...
+                            typeMk, ...
+                            startMk, ...
+                            lengthMk, ...
+                            channelMk);
+        markersBI = reshape(markersBI,size(errorMk,1),5);
+        clear errorMk typeMk startMk lengthMk channelMk markers
     else
         disp('Wrong BadMinMax file, format files allowed .Markers and .mat');
         return
@@ -100,9 +98,7 @@ for iSp = 1:length(i_SS) % Loop on spindles
              (InfoMarkersBI(:,2) - InfoSp(iSp,1));  %Sp2 after BI1
     
     indMarker = find(in_out>0,1); % Empty if no Bad Interval
-    if iSp == 794
-        test = 1;
-    end
+
     try % Find wrong channel in Bad Interval if specific channel
         curChannel = strcmp({i_Info.Electrodes.labels}, structMarkersBI(indMarker).channel);
 %         disp(['CurChannel: ' num2str(curChannel)]);

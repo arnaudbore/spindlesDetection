@@ -1,4 +1,4 @@
-function [ o_markers, o_hdr ] = ld_readVMRK( i_markerFile, saveMatFormat)
+function [ o_markers, o_hdr, o_MarkerFilename ] = ld_readVMRK( i_markerFile, saveMatFormat)
 % 
 % Purpose: Read VMRK file and extract header and information
 % 
@@ -24,6 +24,7 @@ function [ o_markers, o_hdr ] = ld_readVMRK( i_markerFile, saveMatFormat)
 
 o_markers = []; % Set outputs 
 o_hdr = []; % Set outputs 
+o_SleepStageScoring = '';
 
 if nargin<2
     saveMatFormat = false;
@@ -65,7 +66,7 @@ while ischar(tline)
             markerLine = strsplit(tline,'=');
             numMk = str2double(markerLine{1}(3:end));
 
-            disp(['Num marker: ' num2str(numMk)]);
+%             disp(['Num marker: ' num2str(numMk)]);
             
             markerLine = strrep(char(markerLine(2)), ',', ', ');
             markerInfos = strsplit(markerLine,',');
