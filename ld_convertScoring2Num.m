@@ -5,7 +5,7 @@ function [ o_SleepStageScoring ] = ld_convertScoring2Num( i_SleepStageScoring )
 o_SleepStageScoring = zeros(size(i_SleepStageScoring));
 
 for iSc=1:length(o_SleepStageScoring)
-    switch i_SleepStageScoring{iSc}
+    switch strrep(i_SleepStageScoring{iSc},' ','')
         
         case 'NREM1'
             o_SleepStageScoring(iSc) = 1;

@@ -2,6 +2,7 @@ function ld_exportSpindlesAndScoring2vmrk(i_extractSpindleFile, ...
                                           i_scoringFile, ...
                                           i_selectedStageScoring, ...
                                           i_selectedElectrodes, ...
+                                          i_BadInterval, ...
                                           o_vmrkFileName)
 % 
 % function exportSpindles2vmrk()
@@ -12,7 +13,7 @@ function ld_exportSpindlesAndScoring2vmrk(i_extractSpindleFile, ...
 % Arnaud Bore: 23 novembre 2015
 %       Creation exportSpindlesAndScoring2vmrk
 
-stageScoringName = {'wake','NREM1','NREM2','NREM3','NREM4','REM','movememt','unscored'}; % Sleep stages Olfacto
+stageScoringName = {'wake','NREM1','NREM2','NREM3','NREM4','REM','movement','unscored'}; % Sleep stages Olfacto
 
 
 
@@ -39,7 +40,7 @@ sRate = extractSpindles.Info.Recording.sRate;
 epoch = scoring.D.other.CRC.score{3,1};
 
 % Structure of a marker
-Marker = struct('type',{},'description',{},'position',{},'size',{},'channels',{});
+Marker = struct('type',{},'description',{},'position',{},'length',{},'channel',{});
 
 
 for nSl=1:length(scoring.D.other.CRC.score{1,1}) % Loop sleep scoring
@@ -53,8 +54,8 @@ for nSl=1:length(scoring.D.other.CRC.score{1,1}) % Loop sleep scoring
     newmark = struct('type','Scoring', ...
                     'description',currentSleepStage, ...
                     'position',(nSl-1)*epoch*sRate, ...
-                    'size',0, ...
-                    'channels',0);
+                    'length',0, ...
+                    'channel',0);
     Marker = [Marker newmark];
 end
 
@@ -133,15 +134,15 @@ for nSp=1:length(extractSpindles.SS)  % Loop spindles
             newmark = struct('type','Stimulus', ...
                     'description',['Sp_' extractSpindles.SS(nSp).Ref_TypeName{nRef} '_' extractSpindles.Info.Electrodes(nRef).labels '_NREM' num2str(extractSpindles.SS(nSp).scoring(nRef))], ...
                     'position',extractSpindles.SS(nSp).Ref_Start(nRef), ...
-                    'size',extractSpindles.SS(nSp).Ref_Length(nRef), ...
-                    'channels',nRef);
+                    'length',extractSpindles.SS(nSp).Ref_Length(nRef), ...
+                    'channel',nRef);
             Marker = [Marker newmark];    
         elseif extractSpindles.SS(nSp).Ref_Region(nRef)~=0 && ~currentStageScoring && notAlone && ~isRed
             newmark = struct('type','Response', ...
                     'description',['Sp_' extractSpindles.SS(nSp).Ref_TypeName{nRef} '_' extractSpindles.Info.Electrodes(nRef).labels '_NREM' num2str(extractSpindles.SS(nSp).scoring(nRef))], ...
                     'position',extractSpindles.SS(nSp).Ref_Start(nRef), ...
-                    'size',extractSpindles.SS(nSp).Ref_Length(nRef), ...
-                    'channels',nRef);
+                    'length',extractSpindles.SS(nSp).Ref_Length(nRef), ...
+                    'channel',nRef);
             Marker = [Marker newmark];    
         elseif extractSpindles.SS(nSp).Ref_Region(nRef)~=0 && ~currentStageScoring && ~notAlone
             if isRed
@@ -152,15 +153,26 @@ for nSp=1:length(extractSpindles.SS)  % Loop spindles
             newmark = struct('type','Threshold', ...
                     'description',['Sp_' extractSpindles.SS(nSp).Ref_TypeName{nRef} '_' extractSpindles.Info.Electrodes(nRef).labels '_NREM' num2str(extractSpindles.SS(nSp).scoring(nRef))], ...
                     'position',extractSpindles.SS(nSp).Ref_Start(nRef), ...
-                    'size',extractSpindles.SS(nSp).Ref_Length(nRef), ...
-                    'channels',nRef);
+                    'length',extractSpindles.SS(nSp).Ref_Length(nRef), ...
+                    'channel',nRef);
             Marker = [Marker newmark];
         end
     end
 end
 
+if exist('i_BadInterval','var') % Store Bad Markers
+    for nBM=1:length(i_BadInterval)
+         newmark = struct('type','Bad Interval', ...
+                    'description','Bad Min-Max', ...
+                    'position',i_BadInterval(nBM).position, ...
+                    'length',i_BadInterval(nBM).length, ...
+                    'channel',i_BadInterval(nBM).channel);
+         Marker = [Marker newmark];
+    end
+end
+
 % Get VMRK EEG file
-if nargin < 5 
+if nargin < 6 
     [vmrk_FileName,PathName] = uigetfile('*.vmrk','Select EEG file');
     vmrkFileName = [PathName,vmrk_FileName];
 else
@@ -179,10 +191,9 @@ else
                'Codepage=UTF-8');
     
     datFileName = strsplit(vmrkFileName,filesep);
-    datFileName = datFileName(end);
-    datFileName = [datFileName(1:end-4) 'dat'];
+    datFileName = datFileName{end};
+    datFileName = strrep(datFileName, '.dat', '.vmrk');
     fprintf(fid,'%s\n\n',['DataFile=',datFileName]);
-
 end
    
 
@@ -193,7 +204,7 @@ end
 ,'; Commas in type or description text are coded as');
 
     for i = 1:length(Marker)
-        fprintf(fid,'%s\n',['Mk' num2str(i) '=' Marker(i).type ',' Marker(i).description ',' num2str(Marker(i).position) ',' num2str(Marker(i).size) ',' num2str(Marker(i).channels)]);
+        fprintf(fid,'%s\n',['Mk' num2str(i) '=' Marker(i).type ',' Marker(i).description ',' num2str(Marker(i).position) ',' num2str(Marker(i).length) ',' num2str(Marker(i).channel)]);
     end
 
 

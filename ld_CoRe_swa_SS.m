@@ -1,102 +1,133 @@
 %% -- Workflow and Plots for Spindle Analysis -- %%
-% Basic processing script for the automatic detection of spindles using the swa toolbox...
 
-% Importing Data %
-% -------------- %
-% if you have scored the data
-% [fileName, filePath] = uigetfile('*.set');
-% load(fullfile(filePath, fileName), '-mat');
-% keep_samples = EEG.swa_scoring.stages == 2;
-% keep_samples(EEG.swa_scoring.arousals) = false;
-% EEG = swa_selectStagesEEGLAB(EEG, keep_samples);
-% 
-% % for eeglab files
-% [Data, Info] = swa_convertFromEEGLAB();
-% 
-% % or if you have previously analysed some data
-% [Data, Info, SS] = swa_load_previous();
-% 
-% % Check for 'N2' name and call it 'Raw'...
-% if isfield(Data, 'N2')
-%     Data.Raw = Data.N2;
-%     Data = rmfield(Data, 'N2');
-% end
+clc
+clear all
 
-% Load EEG file
-maindir = 'C:\Users\labdoyon01\Documents\GitHub\spindlesDetection';
-cd(maindir)
-% addpath('C:\Users\labdoyon01\Documents\MATLAB\eeglab13_5_4b');
 
-% savepath([maindir, filesep, 'pathdef.m']);
+% Load eeglab
+addpath('/home/borear/Documents/Research/Source/matlab_toolboxes/eeglab');
+addpath('/media/Data/softs/spindlesDetection');
+addpath(genpath('/home/borear/Documents/Research/Source/matlab_toolboxes/swa-matlab/'))
 
 eeglab
 close(gcf)
-% clc
+clc
 % clear all
 
-EEG = pop_loadbv();
-Data.Raw = EEG.data;
+maindir = '/media/Data/Seafile/project_sleep_eeg_msl_spindles/dev_pipeline';
 
-% Info initialization
-Info.Recording.dataDim = size(EEG.data);
-Info.Recording.sRate = EEG.srate;
+cd(maindir)
+load('channelsInfos.mat');
+
+eegFolder = [maindir filesep 'raw' filesep];
+outputeegFolder = [maindir filesep 'output' filesep];
+
+allFiles = dir([ eegFolder '*.dat']);
+
+
 
 % Spindle Detection %
 % ----------------- %
-% get the default settings for spindle detection
-Info = swa_getInfoDefaults(Info, 'SS');
-
-load('channelsInfos.mat');
-
-for nChan = 1:length(EEG.chanlocs)
-    Ind = find(strcmp({ChanInfos.labels},EEG.chanlocs(nChan).labels));
-    if isempty(Ind)
-        currentChanInfos(1,nChan).labels = EEG.chanlocs(nChan).labels;
+for iFile=3%1:length(allFiles)
+    
+    o_name = allFiles(iFile).name;
+    eeg_name = [eegFolder allFiles(iFile).name];
+    vhdr_name = [allFiles(iFile).name(1:end-3) 'vhdr'];
+    vmrk_name = [allFiles(iFile).name(1:end-3) 'vmrk'];
+    
+    out_name = ['o_' strrep(o_name,'.dat','.mat')];
+    
+    disp(['Subject: ' num2str(iFile)])
+    
+    if exist([outputeegFolder out_name],'file')
+        disp(['Already done : ' out_name]);
+        load([outputeegFolder out_name])
     else
-        currentChanInfos(1,nChan) = ChanInfos(Ind);
+        try
+            disp(['Analysis: ' allFiles(iFile).name]);
+	        EEG = pop_loadbv(eegFolder, vhdr_name);    
+
+            % Info initialization
+	        Info.Recording.dataDim = size(EEG.data);
+	        Info.Recording.sRate = EEG.srate;
+
+	        % get the default settings for spindle detection
+            try
+                Info = swa_getInfoDefaults(Info, 'SS');
+            catch
+                disp(['Error swa_getInfoDefaults function: ' allFiles(iFile).name])
+            end
+            
+            
+        	for nChan = 1:length(EEG.chanlocs) %#ok<ALIGN>
+	            Ind = find(strcmp({ChanInfos.labels},EEG.chanlocs(nChan).labels));
+	            if isempty(Ind)
+	                currentChanInfos(1,nChan).labels = EEG.chanlocs(nChan).labels;
+	            else
+	                currentChanInfos(1,nChan) = ChanInfos(Ind);
+	            end
+            end
+
+            Data.SSRef = EEG.data;
+            Info.Electrodes = currentChanInfos;
+            
+            try % Detection Spindle Mensen script
+                [Data, Info, ~, SS_Core] = ld_swa_FindSSRef(Data, Info);
+            catch
+                disp(['Error ld_swa_FindSSRef function: ' allFiles(iFile).name])
+            end
+	        
+            try % Read VMRK
+                [markers, hdr, sleepStageFile] = ld_readVMRK([eegFolder, vmrk_name], Info, true);
+                Info.markers = markers; 
+            catch
+                disp(['Error ld_swa_FindSSRef function: ' allFiles(iFile).name])
+            end
+            
+            try % Remove spindles during Bad Markers
+                [SS_Core, ~] = ld_removeSpindlesDuringBadMarkers(SS_Core, Info, markers);
+            catch
+                disp(['Error ld_removeSpindlesDuringBadMarkers function: ' allFiles(iFile).name])                
+            end
+
+            try % Filter spindles depending on stage scoring
+                SS = ld_addSleepStage2spindles(SS_Core, Info, sleepStageFile, 0);
+            catch
+                disp(['Error ld_addSleepStage2spindles function: ' allFiles(iFile).name])                
+            end
+
+            try % Save output
+                swa_saveOutput(Data, Info, SS, [outputeegFolder out_name], 0, 0);
+                disp(['Save ' out_name]);
+            catch
+                disp(['Error swa_saveOutput function: ' allFiles(iFile).name])                
+            end
+            
+        catch
+            disp('#########################')		        
+            disp(['Analysis: ' allFiles(iFile).name ' FAILED'])
+	        disp('#########################')
+	        clear Data EEG SS SS_Core Info Info_input Ind o_name i_marker name i_struct_marker
+        end
     end
+       
+    
+    try
+        if ~exist('sleepStageFile','var')
+            sleepStageFile = strrep([eegFolder, vmrk_name],'.vmrk','_sleepStageScoring.mat');
+        end
+        
+        if ~exist('Info','var')
+            load([outputeegFolder out_name],'Info');
+        end
+        ld_exportSpindlesAndScoring2vmrk([outputeegFolder out_name], ...
+                                     sleepStageFile, ...
+                                     [3 4 5], ... % NREM2, NREM3, NREM4
+                                     'All', ...
+                                     Info.markers.Bad_Interval, ...
+                                     vmrk_name);
+    catch
+        disp(['Error ld_exportSpindlesAndScoring2vmrk function: ' allFiles(iFile).name])
+    end
+    
 end
-
-Info.Electrodes = currentChanInfos;
-
-% calculate the canonical / reference / prototypical / representative / model / illustrative wave
-% [Data.SSRef, Info]  = swa_CalculateReference(Data.Raw, Info, 1);
-
-% uniqueStages = {EEG.chanlocs.labels};
-%    
-% [s,v] = listdlg('PromptString','Select midline:',...
-%                     'SelectionMode','multiple',...
-%                     'ListString',uniqueStages);
-% 
-% if length(s)~=3 && ~v
-%     printf('error')
-% end
-%                 
-% for i=1:length(s)
-%     chanIndex(i) = find(strcmp({EEG.chanlocs.labels},uniqueStages{s(i)}));
-%     disp(['Channel: ' uniqueStages{s(i)}]);
-% end
-
-% Get Index of channels for spindle detection
-%Data.SSRef = zeros(3,size(Data.Raw,2));
-Data.SSRef = Data.Raw;
-% Data.SSRef(1,:) = Data.Raw(chanIndex(1),:);
-% Data.SSRef(2,:) = Data.Raw(chanIndex(2),:);
-% Data.SSRef(3,:) = Data.Raw(chanIndex(3),:);
-
-% find the spindles in the reference
-[Data, Info, ~, SS_Core] = ld_swa_FindSSRef(Data, Info);
-
-% find the waves in all channels
-%[Data, Info, SS] = swa_FindSSChannels(Data, Info, SS);
-[markers, hdr, sleepStageFile] = ld_readVMRK('SleepEEG_MSL_07MG_01_62ch.vmrk',true);
-SS_Core = ld_removeSpindlesDuringBadMarkers(SS_Core, Info, markers);
-
-% Filter spindles depending on stage scoring
-SS = ld_addSleepStage2spindles(SS_Core, Info, sleepStageFile, 0);
-
-% save the data
-swa_saveOutput(Data, Info, SS, [], 0, 0)
-
-
-

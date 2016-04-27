@@ -1,4 +1,4 @@
-function [ o_markers, o_hdr, o_MarkerFilename ] = ld_readVMRK( i_markerFile, saveMatFormat)
+function [ o_markers, o_hdr, o_MarkerFilename ] = ld_readVMRK( i_markerFile, i_Info, saveMatFormat)
 % 
 % Purpose: Read VMRK file and extract header and information
 % 
@@ -24,7 +24,7 @@ function [ o_markers, o_hdr, o_MarkerFilename ] = ld_readVMRK( i_markerFile, sav
 
 o_markers = []; % Set outputs 
 o_hdr = []; % Set outputs 
-o_SleepStageScoring = '';
+o_MarkerFilename = '';
 
 if nargin<2
     saveMatFormat = false;
@@ -75,7 +75,7 @@ while ischar(tline)
             o_tmpMarkers(numMk).description = markerInfos{2};
             o_tmpMarkers(numMk).position = str2double(markerInfos{3});
             o_tmpMarkers(numMk).length = str2double(markerInfos{4});
-            o_tmpMarkers(numMk).channelNumber = str2double(markerInfos{5});
+            o_tmpMarkers(numMk).channel = str2double(markerInfos{5});
         end
     end
    tline = fgetl(markerFileId); % New line to read
@@ -93,6 +93,7 @@ if saveMatFormat % save D.other.CRC
 
 	o_SleepStageScoring = ld_convertScoring2Num( {o_markers.Scoring.description} );
     D.other.CRC.score{1,1} = o_SleepStageScoring;       
+    D.other.CRC.score{3,1} = (o_markers.Scoring(2).position-o_markers.Scoring(1).position)/i_Info.Recording.sRate;   
     o_MarkerFilename = strrep(i_markerFile,'.vmrk','_sleepStageScoring.mat');
     save(o_MarkerFilename,'D');
     disp('Only Sleep stages scoring have been extracted')

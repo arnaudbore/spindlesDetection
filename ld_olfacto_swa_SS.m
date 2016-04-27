@@ -1,7 +1,9 @@
 %% -- Workflow and Plots for Spindle Analysis -- %%
 
-% Load EEG file
+% Load eeglab
 addpath('/home/borear/Documents/Research/Source/matlab_toolboxes/eeglab');
+addpath('/media/Data/softs/spindlesDetection');
+addpath(genpath('/home/borear/Documents/Research/Source/matlab_toolboxes/swa-matlab/'))
 
 eeglab
 close(gcf)
@@ -59,12 +61,13 @@ for iFile=1:length(allFiles)
     eeg_name = [eegFolder allFiles(iFile).name];
     vhdr_name = [allFiles(iFile).name(1:end-3) 'vhdr'];
     badinterval_name = [badintervalsFolder 'OlfactoSleep_' o_name '_ExpRawData_RDI - Bad Channel Markers.Markers'];
-    scoring_name = [scoringFolder 'OlfactoSleep_' o_name '_ExpRaw_Data.mat'];
+    sleepStageFile = [scoringFolder 'OlfactoSleep_' o_name '_ExpRaw_Data.mat'];
+    
     disp(['Subject: ' num2str(iFile)])
     
     if exist([outputeegFolder out_name],'file')
         disp(['Already done : ' out_name]);
-    elseif ~exist(badinterval_name,'file') || ~exist(scoring_name,'file')
+    elseif ~exist(badinterval_name,'file') || ~exist(sleepStageFile,'file')
         disp('#########################')
         disp(allFiles(iFile).name)
         disp('Some files don''t exist')
@@ -79,7 +82,11 @@ for iFile=1:length(allFiles)
 	        Info.Recording.sRate = EEG.srate;
 
 	        % get the default settings for spindle detection
-	        Info = swa_getInfoDefaults(Info, 'SS');
+            try
+                Info = swa_getInfoDefaults(Info, 'SS');
+            catch
+                disp(['Error swa_getInfoDefaults function: ' allFiles(iFile).name])
+            end
 
         	for nChan = 1:length(EEG.chanlocs) %#ok<ALIGN>
 	            Ind = find(strcmp({ChanInfos.labels},EEG.chanlocs(nChan).labels));
@@ -92,42 +99,57 @@ for iFile=1:length(allFiles)
 
             Data.Raw = EEG.data;
             
-            %033CR
-            %Data.SSRef = Data.Raw([1 2 3 5 6 7 8 9 10],:);
-            % currentChanInfos(4) = [];
+            if strcmp(o_name,'033CR') % 033CR
+                Data.SSRef = Data.Raw([1 2 3 5 6 7 8 9 10],:);
+                currentChanInfos(4) = [];
+            elseif strcmp(o_name,'309TJ') %309TJ
+      	        Data.SSRef = Data.Raw([1 2 3 4 5 6 8 9 10],:);
+     	        currentChanInfos(7) = [];
+            elseif strcmp(o_name,'455CW') %455CW
+                Data.SSRef = Data.Raw([1 3 8 9 10],:);
+                currentChanInfos(7) = [];
+                currentChanInfos(6) = [];
+                currentChanInfos(5) = [];
+                currentChanInfos(4) = [];
+                currentChanInfos(2) = [];
+            elseif strcmp(o_name,'409RD') %409RD
+      	        Data.SSRef = Data.Raw([1 2 3 4 5 6 8 9 10],:);
+                currentChanInfos(7) = [];
+%             elseif strcmp(o_name,'430PL') %430PL
+%       	        Data.SSRef = Data.Raw([1 2 3 4 5 6 7 9 10],:);
+%                 currentChanInfos(8) = [];
+            else
+                Data.SSRef = Data.Raw;
+            end
             
-            %309TJ
-%  	        Data.SSRef = Data.Raw([1 2 3 4 5 6 8 9 10],:);
-% 	        currentChanInfos(7) = [];
-            
-            %455CW
-%  	        Data.SSRef = Data.Raw([1 3 8 9 10],:);
-%             currentChanInfos(7) = [];
-%             currentChanInfos(6) = [];
-%             currentChanInfos(5) = [];
-%             currentChanInfos(4) = [];
-% 	        currentChanInfos(2) = [];
-                        
-            %409RD
-%  	        Data.SSRef = Data.Raw([1 2 3 4 5 6 8 9 10],:);
-% 	        currentChanInfos(7) = [];
-
-            %430PL
-%  	        Data.SSRef = Data.Raw([1 2 3 4 5 6 7 9 10],:);
-% 	        currentChanInfos(8) = [];
-
-            Data.SSRef = Data.Raw;
             Info.Electrodes = currentChanInfos;
             
-	        [Data, Info, ~, SS_Core] = ld_swa_FindSSRef(Data, Info);
-	        
-	        SS_Core = ld_addSleepStage2spindles(SS_Core, Info, scoring_name, 0);
+            try % Detection Spindle Mensen script
+                [Data, Info, ~, SS_Core] = ld_swa_FindSSRef(Data, Info);
+	        catch
+                disp(['Error ld_swa_FindSSRef function: ' allFiles(iFile).name])
+            end
+            
+            try % Remove spindles during Bad Markers
+                [SS_Core, Info] = ld_removeSpindlesDuringBadMarkers(SS_Core, Info, badinterval_name);
+            catch
+                disp(['Error ld_removeSpindlesDuringBadMarkers function: ' allFiles(iFile).name])                
+            end
+            
+            try % Filter spindles depending on stage scoring
+                SS = ld_addSleepStage2spindles(SS_Core, Info, sleepStageFile, 0);
+            catch
+                disp(['Error ld_addSleepStage2spindles function: ' allFiles(iFile).name])                
+            end
         
-	        SS = ld_removeSpindlesDuringBadMarkers(SS_Core, Info, badinterval_name);
-
-	        disp(['Save ' out_name]);
 	        
-	        swa_saveOutput(Data, Info, SS, [outputeegFolder out_name], 0, 0)
+            try % Save output
+    	        disp(['Save ' out_name]);
+                swa_saveOutput(Data, Info, SS, [outputeegFolder out_name], 0, 0)
+            catch
+                disp(['Error swa_saveOutput function: ' allFiles(iFile).name])                
+            end
+                
             clear Data EEG SS SS_Core Info Info_input Ind o_name i_marker name i_struct_marker
         catch
 	        disp('#########################')		        
@@ -135,6 +157,25 @@ for iFile=1:length(allFiles)
 	        disp('#########################')
 	        clear Data EEG SS SS_Core Info Info_input Ind o_name i_marker name i_struct_marker
         end
+        
+        try 
+            vmrk_name = [outputeegFolder allFiles(iFile).name(1:end-3) 'vmrk'];
+ 
+            if ~exist('Info','var')
+                load([outputeegFolder out_name],'Info');
+            end
+            
+            ld_exportSpindlesAndScoring2vmrk([outputeegFolder out_name], ...
+                    sleepStageFile, ...
+                    [3 4 5], ... % NREM2, NREM3, NREM4
+                    'All', ... % All channels
+                    Info.markers.Bad_Interval, ...
+                    vmrk_name);
+               
+        catch
+            disp(['Error ld_exportSpindlesAndScoring2vmrk function: ' allFiles(iFile).name])
+        end
+        
     end
 end
 
