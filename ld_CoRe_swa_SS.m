@@ -28,7 +28,7 @@ allFiles = dir([ eegFolder '*.dat']);
 
 % Spindle Detection %
 % ----------------- %
-for iFile=3%1:length(allFiles)
+for iFile=1:length(allFiles)
     
     o_name = allFiles(iFile).name;
     eeg_name = [eegFolder allFiles(iFile).name];
