@@ -283,9 +283,9 @@ for ref_wave = 1 : size(Data.SSRef, 1)
     
     % brief report of the spindles found
     if ref_wave == 1
-        fprintf(1, 'Information: %d spindle bursts found in reference wave \n', length(SS));
+        fprintf(1, 'Information: %d spindle bursts found in reference wave - %s \n', length(SS), Info.Electrodes(ref_wave).labels);
     else
-        fprintf(1, 'Information: %d spindle bursts added from region %d \n', length(SS) - original_count, ref_wave);
+        fprintf(1, 'Information: %d spindle bursts added from region %d - %s \n', length(SS) - original_count, ref_wave, Info.Electrodes(ref_wave).labels);
     end
     
 end
