@@ -28,7 +28,7 @@ allFiles = dir([ eegFolder '*.dat']);
 
 % Spindle Detection %
 % ----------------- %
-for iFile=1:length(allFiles)
+for iFile=1%1:length(allFiles)
     
     o_name = allFiles(iFile).name;
     eeg_name = [eegFolder allFiles(iFile).name];
@@ -54,6 +54,10 @@ for iFile=1:length(allFiles)
 	        % get the default settings for spindle detection
             try
                 Info = swa_getInfoDefaults(Info, 'SS');
+                
+                %  CoRe Project Modification Filter
+                Info.Parameters.Filter_hPass = [10.0 13.0];
+                Info.Parameters.Filter_lPass = [13.0 17.0];
             catch
                 disp(['Error swa_getInfoDefaults function: ' allFiles(iFile).name])
             end
@@ -125,7 +129,7 @@ for iFile=1:length(allFiles)
                                      [3 4 5], ... % NREM2, NREM3, NREM4
                                      'All', ...
                                      Info.markers.Bad_Interval, ...
-                                     vmrk_name);
+                                     [outputeegFolder, vmrk_name]);
     catch
         disp(['Error ld_exportSpindlesAndScoring2vmrk function: ' allFiles(iFile).name])
     end
