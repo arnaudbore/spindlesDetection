@@ -26,41 +26,50 @@ if nargin < 3
     [FileName,PathName] = uigetfile('*.Markers','Select marker file');
     markerFile = fopen([PathName, FileName],'r');
 else
-    if strfind(i_markers,'.Markers')
-        markerFile = fopen(i_markers,'r');
+    if ischar(i_markers)
+        if strfind(i_markers,'.Markers')
+            markerFile = fopen(i_markers,'r');
         
-        % Markers Bad Interval
-        markersBI = textscan(markerFile,'%s','Delimiter','\n'); % Read File
-        fclose(markerFile); % Close file
+            % Markers Bad Interval
+            markersBI = textscan(markerFile,'%s','Delimiter','\n'); % Read File
+            fclose(markerFile); % Close file
 
-        markersBI = markersBI{1,1}(3:end,1); % remove header
+            markersBI = markersBI{1,1}(3:end,1); % remove header
 
-        markersBI = regexp(markersBI,', ','split'); % split cells
-        markersBI = vertcat(markersBI{:}); % Convert cell n*1*5 into cell n*5
+            markersBI = regexp(markersBI,', ','split'); % split cells
+            markersBI = vertcat(markersBI{:}); % Convert cell n*1*5 into cell n*5
 
-        Bad_Interval = struct('type',{},'description',{},'position',{},'length',{},'channel',{});
+            Bad_Interval = struct('type',{},'description',{},'position',{},'length',{},'channel',{});
         
-        for nBM=1:length(markersBI)
-            newmark = struct('type','Bad Interval', ...
-                    'description',' Bad Min-Max', ...
-                    'position',markersBI{nBM,4}, ...
-                    'length',markersBI{nBM,3}, ...
-                    'channel',convertChannel2Num(i_Info, markersBI{nBM,5}));
-            Bad_Interval = [Bad_Interval newmark];
+            for nBM=1:length(markersBI)
+                newmark = struct('type','Bad Interval', ...
+                        'description',' Bad Min-Max', ...
+                        'position',markersBI{nBM,4}, ...
+                        'length',markersBI{nBM,3}, ...
+                        'channel',convertChannel2Num(i_Info, markersBI{nBM,5}));
+                Bad_Interval = [Bad_Interval newmark];
+            end
+        
+            i_Info.markers.Bad_Interval = Bad_Interval;
+        
+            clear markers colHeadings
+        else
+            disp('This format is not supported yet')
         end
-        
-        i_Info.markers.Bad_Interval = Bad_Interval;
-        
-        
-        clear markers colHeadings
-        
-    elseif isfield(i_markers,'Bad_Interval')
+    elseif isstruct(i_markers) && ...
+            isfield(i_markers,'Bad_Interval')
         markers = i_markers.Bad_Interval;
         errorMk = {markers.type}';
         typeMk = {markers.description}';
         startMk = strread(num2str([markers.position]),'%s');
         lengthMk = strread(num2str([markers.length]),'%s');
-        channelNumber = [markers.channelNumber];
+        
+        if isfield(markers,'channelNumber')  % Check if field exist
+            channelNumber = [markers.channelNumber];
+        elseif isfield(markers,'channel')
+            channelNumber = [markers.channel];
+        end
+        
         if any(channelNumber~=0)
             disp('@TODO convert number to electrode names')
             return
@@ -109,6 +118,9 @@ removeSp = [];
 
 for iSp = 1:length(i_SS) % Loop on spindles
 %     disp(['iSp: ' num2str(iSp)]);
+    if InfoSp(iSp,1) == 680329
+        disp('toto')
+    end
     in_out = (InfoSp(iSp,2)    - InfoMarkersBI(:,1)) ./ ... %BI1 bf Sp2 
              (InfoMarkersBI(:,2) - InfoSp(iSp,1));  %Sp2 after BI1
     
