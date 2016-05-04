@@ -130,9 +130,16 @@ for ref_wave = 1 : size(Data.SSRef, 1)
     SS_lengths = power_end - power_start;
     minimum_length = (Info.Parameters.Ref_WaveLength(1) / 1.3) * Info.Recording.sRate;
     
+    % Remove first fake spindle due to artefact at the beginning
+    if power_start(1) == 1
+        power_start = power_start(2:end);
+        power_end = power_end(2:end);
+    end    
+    
     % remove all potentials under the soft minimum length
     power_start(SS_lengths < minimum_length) = [];
     power_end(SS_lengths < minimum_length) = [];
+    
     
     % -- find negative troughs in the power signal near the crossings -- %
     % calculate the differential
@@ -143,6 +150,7 @@ for ref_wave = 1 : size(Data.SSRef, 1)
     % Calculate the actual start of the spindle from powerData
     actual_start = nan(length(power_start), 1);
     actual_end = nan(length(power_start), 1);
+    
     for n = 1 : length(power_start)
         actual_start(n) = power_MNP(sum(power_start(n) - power_MNP > 0));
         actual_end(n) = power_MNP(sum(power_end(n) - power_MNP > 0) + 1);
