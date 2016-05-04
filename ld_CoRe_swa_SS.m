@@ -28,7 +28,7 @@ allFiles = dir([ eegFolder '*.dat']);
 
 % Spindle Detection %
 % ----------------- %
-for iFile=1%1:length(allFiles)
+for iFile=11%1:length(allFiles)
     
     o_name = allFiles(iFile).name;
     eeg_name = [eegFolder allFiles(iFile).name];
@@ -85,7 +85,7 @@ for iFile=1%1:length(allFiles)
                 [markers, hdr, sleepStageFile] = ld_readVMRK([eegFolder, vmrk_name], Info, true);
                 Info.markers = markers; 
             catch
-                disp(['Error ld_swa_FindSSRef function: ' allFiles(iFile).name])
+                disp(['Error ld_readVMRK function: ' allFiles(iFile).name])
             end
             
             try % Remove spindles during Bad Markers
@@ -111,8 +111,9 @@ for iFile=1%1:length(allFiles)
             disp('#########################')		        
             disp(['Analysis: ' allFiles(iFile).name ' FAILED'])
 	        disp('#########################')
-	        clear Data EEG SS SS_Core Info Info_input Ind o_name i_marker name i_struct_marker
         end
+        
+        clear Data EEG SS SS_Core Info Info_input Ind o_name i_marker name i_struct_marker
     end
        
     
@@ -124,12 +125,17 @@ for iFile=1%1:length(allFiles)
         if ~exist('Info','var')
             load([outputeegFolder out_name],'Info');
         end
-        ld_exportSpindlesAndScoring2vmrk([outputeegFolder out_name], ...
-                                     sleepStageFile, ...
-                                     [3 4 5], ... % NREM2, NREM3, NREM4
-                                     'All', ...
-                                     Info.markers.Bad_Interval, ...
-                                     [outputeegFolder, vmrk_name]);
+        
+        if ~exist([outputeegFolder, vmrk_name], 'file')
+            ld_exportSpindlesAndScoring2vmrk([outputeegFolder out_name], ...
+                                         sleepStageFile, ...
+                                         [3 4 5], ... % NREM2, NREM3, NREM4
+                                         'All', ...
+                                         Info.markers.Bad_Interval, ...
+                                         [outputeegFolder, vmrk_name]);
+        else
+           disp([outputeegFolder, vmrk_name, ' already exists']);
+        end
     catch
         disp(['Error ld_exportSpindlesAndScoring2vmrk function: ' allFiles(iFile).name])
     end
