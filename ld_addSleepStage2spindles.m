@@ -33,6 +33,8 @@ eegLength = i_Infos.Recording.dataDim(2)/i_Infos.Recording.sRate;
 scoringLength = length(markers.D.other.CRC.score{1,1})*markers.D.other.CRC.score{3,1};
 
 if scoringLength < eegLength
+    disp(['Scoring Length : ' num2str(scoringLength)]);
+    disp(['EEG Length : ' num2str(eegLength)]);
     disp('Not enough scoring')
 end
     
