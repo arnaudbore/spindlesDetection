@@ -18,6 +18,9 @@ function [Data, Info, SS, SS_Core] = ld_swa_FindSSRef(Data, Info)
 %   spindle is best classified as a slow or fast variant
 
 %% Initialise the SS Structure
+
+maxNPeaks = 600;
+
 SS = struct(...
     'Ref_Region',               [],...
     'Ref_Type',                 [],...
@@ -44,6 +47,8 @@ SS_Core = struct(...
     'Ref_TypeName',             cell(1,size(Data.SSRef, 1)),...    
     'Ref_Start',                zeros(1,size(Data.SSRef, 1)),...
     'Ref_End',                  zeros(1,size(Data.SSRef, 1)),...    
+    'Ref_PeaksAmplitude',      zeros(maxNPeaks,size(Data.SSRef, 1)),...    
+    'Ref_PeaksIndice',         zeros(maxNPeaks,size(Data.SSRef, 1)),... 
     'Ref_NegativePeak',         zeros(1,size(Data.SSRef, 1)),...
     'Ref_PositivePeak',         zeros(1,size(Data.SSRef, 1)),...
     'Ref_Peak2Peak',            zeros(1,size(Data.SSRef, 1)),...
@@ -153,7 +158,12 @@ for ref_wave = 1 : size(Data.SSRef, 1)
     
     for n = 1 : length(power_start)
         actual_start(n) = power_MNP(sum(power_start(n) - power_MNP > 0));
-        actual_end(n) = power_MNP(sum(power_end(n) - power_MNP > 0) + 1);
+        try
+            actual_end(n) = power_MNP(sum(power_end(n) - power_MNP > 0) + 1);
+        catch
+            actual_start(n) = [];
+            actual_end(n) = [];
+        end
     end
     
     % Check Hard Minimum Length %
@@ -216,6 +226,8 @@ for ref_wave = 1 : size(Data.SSRef, 1)
             if c == 2              
                 % Check which region has the bigger P2P wave...
                 SS_Core(SS_indice).Ref_Region(ref_wave) =  ref_wave;
+                SS_Core(SS_indice).Ref_PeaksAmplitude(:, ref_wave)=     [peak_amplitudes'; zeros(maxNPeaks - length(peak_amplitudes),1)];
+                SS_Core(SS_indice).Ref_PeaksIndice(:, ref_wave)  =     [peak_indices'; zeros(maxNPeaks - length(peak_indices),1)];
                 SS_Core(SS_indice).Ref_NegativePeak(ref_wave)    =      min(peak_amplitudes);
                 SS_Core(SS_indice).Ref_PositivePeak(ref_wave)    =      max(peak_amplitudes);
                 SS_Core(SS_indice).Ref_Peak2Peak(ref_wave)       =      peak2peak;
@@ -251,6 +263,8 @@ for ref_wave = 1 : size(Data.SSRef, 1)
         SS_count = SS_count + 1;
 
         SS_Core(SS_count).Ref_Region          =      zeros(1,size(Data.SSRef, 1));
+        SS_Core(SS_count).Ref_PeaksAmplitude  =      zeros(maxNPeaks,size(Data.SSRef, 1));
+        SS_Core(SS_count).Ref_PeaksIndice     =      zeros(maxNPeaks,size(Data.SSRef, 1));
         SS_Core(SS_count).Ref_NegativePeak    =      zeros(1,size(Data.SSRef, 1));
         SS_Core(SS_count).Ref_PositivePeak    =      zeros(1,size(Data.SSRef, 1));
         SS_Core(SS_count).Ref_Peak2Peak       =      zeros(1,size(Data.SSRef, 1));
@@ -265,6 +279,8 @@ for ref_wave = 1 : size(Data.SSRef, 1)
         
         
         SS_Core(SS_count).Ref_Region(ref_wave)          =      ref_wave;
+        SS_Core(SS_count).Ref_PeaksAmplitude(:, ref_wave) =    [peak_amplitudes'; zeros(maxNPeaks - length(peak_amplitudes),1)];
+        SS_Core(SS_count).Ref_PeaksIndice(:, ref_wave)  =      [peak_indices'; zeros(maxNPeaks - length(peak_indices),1)];
         SS_Core(SS_count).Ref_NegativePeak(ref_wave)    =      min(peak_amplitudes);
         SS_Core(SS_count).Ref_PositivePeak(ref_wave)    =      max(peak_amplitudes);
         SS_Core(SS_count).Ref_Peak2Peak(ref_wave)       =      peak2peak;
