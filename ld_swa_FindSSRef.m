@@ -69,8 +69,8 @@ end
 
 % Wavelet Parameters
 frequency_range{1} = Info.Parameters.Filter_hPass(1) : 0.5 : Info.Parameters.Filter_lPass(2);
-frequency_range{2} = Info.Parameters.Filter_hPass(1)-1 : 0.01 : Info.Parameters.Filter_lPass(1);
-frequency_range{3} = Info.Parameters.Filter_hPass(2) : 0.01 : Info.Parameters.Filter_lPass(2)+1;
+frequency_range{2} = Info.Parameters.Filter_hPass(1)-1 : 0.05 : Info.Parameters.Filter_lPass(1);
+frequency_range{3} = Info.Parameters.Filter_hPass(2) : 0.05 : Info.Parameters.Filter_lPass(2)+1;
 
 % Get scale values using inverse of pseudo-frequencies
 scale_full = (centfrq('morl')./ frequency_range{1}) * Info.Recording.sRate;
@@ -212,26 +212,33 @@ for ref_wave = 1 : size(Data.SSRef, 1)
         % -- check spindle type (fast or slow) -- %
         slowDecomposition = cwt(Data.SSRef(ref_wave, actual_start(n) : actual_end(n)), scale_slow, 'morl');
         fastDecomposition = cwt(Data.SSRef(ref_wave, actual_start(n) : actual_end(n)), scale_fast, 'morl');
+        
+        slowBeforeSpindleDecomposition = cwt(Data.SSRef(ref_wave, actual_start(n)-Info.Recording.sRate*2.5 : actual_end(n)-Info.Recording.sRate*0.5), scale_slow, 'morl');
+        fastBeforeSpindleDecomposition = cwt(Data.SSRef(ref_wave, actual_start(n)-Info.Recording.sRate*2.5 : actual_end(n)-Info.Recording.sRate*0.5), scale_fast, 'morl');
+       
+        slowBeforeSpindleDecomposition = repmat(mean(abs(slowBeforeSpindleDecomposition), 2), [1,size(slowDecomposition,2)]);
+        fastBeforeSpindleDecomposition = repmat(mean(abs(fastBeforeSpindleDecomposition), 2), [1,size(fastDecomposition,2)]);
+        nFreq = repmat(frequency_range{2},[size(fastDecomposition,2), 1]);
         slow_data = mean(slowDecomposition, 1);
         fast_data = mean(fastDecomposition, 1);
         [~, type] = max([max(abs(slow_data)), max(abs(fast_data))]);
         
-        
         if type == 1 
             typeName = 'slow';
 %             [~, p] = max(max(abs(slowDecomposition),[],2));
-            [~, p] = max(mean(abs(slowDecomposition), 2));
+            [~, p] = max(mean(abs(slowDecomposition./slowBeforeSpindleDecomposition), 2));
+%             [~, p] = max(mean(abs(slowDecomposition.*nFreq'), 2));
             freq = frequency_range{2}(p);
         else
             typeName = 'fast';
 %             [~, p] = max(max(abs(fastDecomposition),[],2));
-            [~, p] = max(mean(abs(fastDecomposition), 2));
+            [~, p] = max(mean(abs(fastDecomposition./fastBeforeSpindleDecomposition), 2));
             freq = frequency_range{3}(p);
         end
         
-        if freq < Info.Parameters.Filter_hPass(1) || freq > Info.Parameters.Filter_lPass(2)
-            freq = 0;
-        end
+%         if freq < Info.Parameters.Filter_hPass(1) || freq > Info.Parameters.Filter_lPass(2)
+%             freq = 0;
+%         end
         
         % -- Save Wave to Structure -- %
         % Check if the SS has already been found in another reference channel
@@ -278,7 +285,7 @@ for ref_wave = 1 : size(Data.SSRef, 1)
         SS_count = SS_count + 1;
 
         SS_Core(SS_count).Ref_Region          =      zeros(1,size(Data.SSRef, 1));
-        SS_Core(SS_count).Ref_Freq            =      zeros(1,size(Data.SSRef, 1));
+        SS_Core(SS_count).Ref_Frequency       =      zeros(1,size(Data.SSRef, 1));
         SS_Core(SS_count).Ref_PeaksAmplitude  =      zeros(maxNPeaks,size(Data.SSRef, 1));
         SS_Core(SS_count).Ref_PeaksIndice     =      zeros(maxNPeaks,size(Data.SSRef, 1));
         SS_Core(SS_count).Ref_NegativePeak    =      zeros(1,size(Data.SSRef, 1));
