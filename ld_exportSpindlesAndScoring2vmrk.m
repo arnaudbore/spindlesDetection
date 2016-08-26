@@ -192,7 +192,6 @@ else
     
     datFileName = strsplit(vmrkFileName,filesep);
     datFileName = datFileName{end};
-    datFileName = strrep(datFileName, '.dat', '.vmrk');
     fprintf(fid,'%s\n\n',['DataFile=',datFileName]);
 end
    
