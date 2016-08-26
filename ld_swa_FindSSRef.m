@@ -73,7 +73,6 @@ scale_fast = (centfrq('morl')./ frequency_range{3}) * Info.Recording.sRate;
 
 %% Loop for each Reference Wave
 for ref_wave = 1 : size(Data.SSRef, 1)
-    
     % how many spindles have been detected?
     if isempty(SS)
         original_count = 0;
@@ -152,8 +151,17 @@ for ref_wave = 1 : size(Data.SSRef, 1)
     actual_end = nan(length(power_start), 1);
     
     for n = 1 : length(power_start)
+        
         actual_start(n) = power_MNP(sum(power_start(n) - power_MNP > 0));
-        actual_end(n) = power_MNP(sum(power_end(n) - power_MNP > 0) + 1);
+
+        if (sum(power_end(n) - power_MNP > 0) + 1) > length(power_MNP)
+            fprintf('WARNING: Ref_Wave %d - %s - delete last spindle\n', ...
+                                ref_wave, Info.Electrodes(ref_wave).labels)
+            actual_start(n) = [];
+            actual_end(n) = [];
+        else
+            actual_end(n) = power_MNP(sum(power_end(n) - power_MNP > 0) + 1);
+        end
     end
     
     % Check Hard Minimum Length %
