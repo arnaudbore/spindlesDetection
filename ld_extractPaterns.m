@@ -2,7 +2,37 @@
 %LD_EXTRACTPATERNS Summary of this function goes here
 %   Detailed explanation goes here
 
-% load('/media/Data/Seafile/project_sleep_eeg_msl_spindles/SleepEEG_MSL_07MG_01_allchannels.mat')
+clear all; clc;
+cd ('E:\Documents\Research Arnaud\CRIUGM\Sleep & Reconsolidation\BrainVision\spindles_detection\output\fz_cz_pz_oz\CTRL');
+files = dir('*.mat');
+
+% Sleep stages
+choice = questdlg('Choose sleep stages', ...
+	'Sleep stages', ...
+	'NREM2','NREM3','Both','');
+
+switch choice
+    case 'NREM2'
+        disp([choice])
+        sleep_stage2 = 2;
+        sleep_stage3 = 2;
+        idx_ss=2;
+    case 'NREM3'
+        disp([choice])
+        sleep_stage2 = 3;
+        sleep_stage3 = 3;
+        idx_ss=3;
+    case 'Both'
+        disp([choice])
+        sleep_stage2 = 2;
+        sleep_stage3 = 3;
+        idx_ss=23;
+end
+
+for i=1:length(files)
+eval(['load ' files(i).name]);
+idx=files(i).name(16:19);
+filename = [idx '_CTRL_NREM' num2str(idx_ss)];
 
 for nElec=1:length(Info.Electrodes)
     firstElectrode.(Info.Electrodes(nElec).labels) = [];
@@ -18,8 +48,9 @@ for nSp=1:length(SS)  % Loop on spindles
     currStart = SS(nSp).Ref_Start;
     currRegion = SS(nSp).Ref_Region;
     currScoring = SS(nSp).scoring(currRegion>0);
-
-    if all(currScoring == 3) || all(currScoring == 2)
+    
+    if all(currScoring == sleep_stage2) || all(currScoring == sleep_stage3)
+        
         indRealStart = find(currStart == min(currStart(currStart>0)));
         if length(indRealStart) > 1
             currPeak2Peak = SS(nSp).Ref_Peak2Peak(indRealStart);

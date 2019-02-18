@@ -1,4 +1,4 @@
-function [ o_markers, o_hdr, o_MarkerFilename ] = ld_readVMRK( i_markerFile, i_Info, saveMatFormat)
+function [ o_markers, o_hdr, o_MarkerFilename ] = ld_readVMRK( i_markerFile, i_Info, saveMatFormat, i_scoringFile)
 % 
 % Purpose: Read VMRK file and extract header and information
 % 
@@ -89,11 +89,49 @@ for nType=1:length(mkType)     % Remove duplicate
     o_markers.(typeName) = o_markers.(typeName)(idx);
 end
 
-if saveMatFormat % save D.other.CRC 
+if ~isfield(o_markers, 'Scoring')
+    scoring = load(i_scoringFile);
+    o_markers.Scoring = [];
+    stageScoringName = {'wake','NREM1','NREM2','NREM3','NREM4','REM','movement','unscored'}; % Sleep stages Olfacto
 
-	o_SleepStageScoring = ld_convertScoring2Num( {o_markers.Scoring.description} );
+    % Get length of each scoring epoch
+    epoch = scoring.D.other.CRC.score{3,1};
+
+    % Structure of a marker
+    Marker = struct('type',{},'description',{},'position',{},'length',{},'channel',{});
+
+    for nSl=1:length(scoring.D.other.CRC.score{1,1}) % Loop sleep scoring
+        if isnan(scoring.D.other.CRC.score{1,1}(nSl)+1) || ... % Check if scoring is correct
+            scoring.D.other.CRC.score{1,1}(nSl)+1 > 6
+
+            currentSleepStage = stageScoringName(8);
+        else
+            currentSleepStage = stageScoringName(scoring.D.other.CRC.score{1,1}(nSl)+1);
+        end
+        
+        newmark = struct('type','Scoring', ...
+                        'description',currentSleepStage, ...
+                        'position',(nSl-1)*epoch*i_Info.Recording.sRate, ...
+                        'length',0, ...
+                        'channel',0);
+        o_markers.Scoring(end+1).type = newmark.type;
+        o_markers.Scoring(end).description = newmark.description;
+        o_markers.Scoring(end).position = newmark.position;
+        o_markers.Scoring(end).length = newmark.length;
+        o_markers.Scoring(end).channel = newmark.channel;
+    end
+end
+    
+
+if saveMatFormat % save D.other.CRC 
+    if isfield(o_markers, 'Scoring')
+        o_SleepStageScoring = ld_convertScoring2Num( {o_markers.Scoring.description} );
+        D.other.CRC.score{3,1} = (o_markers.Scoring(2).position-o_markers.Scoring(1).position)/i_Info.Recording.sRate;      
+    else
+        disp('No scoring in VMRK');
+    end
+    
     D.other.CRC.score{1,1} = o_SleepStageScoring;       
-    D.other.CRC.score{3,1} = (o_markers.Scoring(2).position-o_markers.Scoring(1).position)/i_Info.Recording.sRate;   
     o_MarkerFilename = strrep(i_markerFile,'.vmrk','_sleepStageScoring.mat');
     save(o_MarkerFilename,'D');
     disp('Only Sleep stages scoring have been extracted')

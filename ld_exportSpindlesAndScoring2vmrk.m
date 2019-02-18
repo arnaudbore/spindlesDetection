@@ -121,43 +121,47 @@ disp(['Electrodes selected: ',selectedElectrodesNames]);
 
 isRed = 0;
 
-for nSp=1:length(extractSpindles.SS)  % Loop spindles
-    if isRed
-        isRed = 0;
-    else
-        isRed = 1;
-    end
-    for nRef=selectedElectrodes % Electrodes selected
-        currentStageScoring = isempty(find(extractSpindles.SS(nSp).scoring(nRef)==selectedStageScoring, 1));
-        notAlone = nnz(extractSpindles.SS(nSp).Ref_Region)>1;
-        if extractSpindles.SS(nSp).Ref_Region(nRef)~=0 && ~currentStageScoring && notAlone && isRed
-            newmark = struct('type','Stimulus', ...
-                    'description',['Sp_' extractSpindles.SS(nSp).Ref_TypeName{nRef} '_' extractSpindles.Info.Electrodes(nRef).labels '_NREM' num2str(extractSpindles.SS(nSp).scoring(nRef))], ...
-                    'position',extractSpindles.SS(nSp).Ref_Start(nRef), ...
-                    'length',extractSpindles.SS(nSp).Ref_Length(nRef), ...
-                    'channel',nRef);
-            Marker = [Marker newmark];    
-        elseif extractSpindles.SS(nSp).Ref_Region(nRef)~=0 && ~currentStageScoring && notAlone && ~isRed
-            newmark = struct('type','Response', ...
-                    'description',['Sp_' extractSpindles.SS(nSp).Ref_TypeName{nRef} '_' extractSpindles.Info.Electrodes(nRef).labels '_NREM' num2str(extractSpindles.SS(nSp).scoring(nRef))], ...
-                    'position',extractSpindles.SS(nSp).Ref_Start(nRef), ...
-                    'length',extractSpindles.SS(nSp).Ref_Length(nRef), ...
-                    'channel',nRef);
-            Marker = [Marker newmark];    
-        elseif extractSpindles.SS(nSp).Ref_Region(nRef)~=0 && ~currentStageScoring && ~notAlone
-            if isRed
-                isRed = 0;
-            else
-                isRed = 1;
+if isfield(extractSpindles,'SS')
+    for nSp=1:length(extractSpindles.SS)  % Loop spindles
+        if isRed
+            isRed = 0;
+        else
+            isRed = 1;
+        end
+        for nRef=selectedElectrodes % Electrodes selected
+            currentStageScoring = isempty(find(extractSpindles.SS(nSp).scoring(nRef)==selectedStageScoring, 1));
+            notAlone = nnz(extractSpindles.SS(nSp).Ref_Region)>1;
+            if extractSpindles.SS(nSp).Ref_Region(nRef)~=0 && ~currentStageScoring && notAlone && isRed
+                newmark = struct('type','Stimulus', ...
+                        'description',['Sp_' extractSpindles.SS(nSp).Ref_TypeName{nRef} '_' extractSpindles.Info.Electrodes(nRef).labels '_NREM' num2str(extractSpindles.SS(nSp).scoring(nRef))], ...
+                        'position',extractSpindles.SS(nSp).Ref_Start(nRef), ...
+                        'length',extractSpindles.SS(nSp).Ref_Length(nRef), ...
+                        'channel',nRef);
+                Marker = [Marker newmark];    
+            elseif extractSpindles.SS(nSp).Ref_Region(nRef)~=0 && ~currentStageScoring && notAlone && ~isRed
+                newmark = struct('type','Response', ...
+                        'description',['Sp_' extractSpindles.SS(nSp).Ref_TypeName{nRef} '_' extractSpindles.Info.Electrodes(nRef).labels '_NREM' num2str(extractSpindles.SS(nSp).scoring(nRef))], ...
+                        'position',extractSpindles.SS(nSp).Ref_Start(nRef), ...
+                        'length',extractSpindles.SS(nSp).Ref_Length(nRef), ...
+                        'channel',nRef);
+                Marker = [Marker newmark];    
+            elseif extractSpindles.SS(nSp).Ref_Region(nRef)~=0 && ~currentStageScoring && ~notAlone
+                if isRed
+                    isRed = 0;
+                else
+                    isRed = 1;
+                end
+                newmark = struct('type','Threshold', ...
+                        'description',['Sp_' extractSpindles.SS(nSp).Ref_TypeName{nRef} '_' extractSpindles.Info.Electrodes(nRef).labels '_NREM' num2str(extractSpindles.SS(nSp).scoring(nRef))], ...
+                        'position',extractSpindles.SS(nSp).Ref_Start(nRef), ...
+                        'length',extractSpindles.SS(nSp).Ref_Length(nRef), ...
+                        'channel',nRef);
+                Marker = [Marker newmark];
             end
-            newmark = struct('type','Threshold', ...
-                    'description',['Sp_' extractSpindles.SS(nSp).Ref_TypeName{nRef} '_' extractSpindles.Info.Electrodes(nRef).labels '_NREM' num2str(extractSpindles.SS(nSp).scoring(nRef))], ...
-                    'position',extractSpindles.SS(nSp).Ref_Start(nRef), ...
-                    'length',extractSpindles.SS(nSp).Ref_Length(nRef), ...
-                    'channel',nRef);
-            Marker = [Marker newmark];
         end
     end
+else
+    disp('There is no spindles')
 end
 
 if exist('i_BadInterval','var') % Store Bad Markers
@@ -192,6 +196,7 @@ else
     
     datFileName = strsplit(vmrkFileName,filesep);
     datFileName = datFileName{end};
+    datFileName = strrep(datFileName, '.eeg', '.vmrk');
     fprintf(fid,'%s\n\n',['DataFile=',datFileName]);
 end
    

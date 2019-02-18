@@ -69,16 +69,20 @@ end
 
 % Wavelet Parameters
 frequency_range{1} = Info.Parameters.Filter_hPass(1) : 0.5 : Info.Parameters.Filter_lPass(2);
-frequency_range{2} = Info.Parameters.Filter_hPass(1)-1 : 0.05 : Info.Parameters.Filter_lPass(1);
-frequency_range{3} = Info.Parameters.Filter_hPass(2) : 0.05 : Info.Parameters.Filter_lPass(2)+1;
+frequency_range{2} = Info.Parameters.Filter_hPass(1) : 0.05 : Info.Parameters.Filter_lPass(1);
+frequency_range{3} = Info.Parameters.Filter_hPass(2) : 0.05 : Info.Parameters.Filter_lPass(2);
+frequency_range{4} = Info.Parameters.Filter_hPass(1)-1 : 0.05 : Info.Parameters.Filter_lPass(2)+1;
 
 % Get scale values using inverse of pseudo-frequencies
 scale_full = (centfrq('morl')./ frequency_range{1}) * Info.Recording.sRate;
 scale_slow = (centfrq('morl')./ frequency_range{2}) * Info.Recording.sRate;
 scale_fast = (centfrq('morl')./ frequency_range{3}) * Info.Recording.sRate;
 
+scale_spindle = (centfrq('morl')./ frequency_range{4}) * Info.Recording.sRate;
+
 %% Loop for each Reference Wave
 for ref_wave = 1 : size(Data.SSRef, 1)
+    
     % how many spindles have been detected?
     if isempty(SS)
         original_count = 0;
@@ -126,6 +130,12 @@ for ref_wave = 1 : size(Data.SSRef, 1)
         power_end(1) = [];
     end
     
+    % Remove first fake spindle due to artefact at the beginning
+    if power_start(1) == 1
+        power_start = power_start(2:end);
+        power_end = power_end(2:end);
+    end    
+    
     % Check for end after start
     if length(power_start) > length(power_end)
         power_start(end) = [];
@@ -134,17 +144,10 @@ for ref_wave = 1 : size(Data.SSRef, 1)
     % Check Soft Minimum Length (30% less than actual minimum) %
     SS_lengths = power_end - power_start;
     minimum_length = (Info.Parameters.Ref_WaveLength(1) / 1.3) * Info.Recording.sRate;
-    
-    % Remove first fake spindle due to artefact at the beginning
-    if power_start(1) == 1
-        power_start = power_start(2:end);
-        power_end = power_end(2:end);
-    end    
-    
+
     % remove all potentials under the soft minimum length
     power_start(SS_lengths < minimum_length) = [];
     power_end(SS_lengths < minimum_length) = [];
-    
     
     % -- find negative troughs in the power signal near the crossings -- %
     % calculate the differential
@@ -212,33 +215,27 @@ for ref_wave = 1 : size(Data.SSRef, 1)
         slowDecomposition = cwt(Data.SSRef(ref_wave, actual_start(n) : actual_end(n)), scale_slow, 'morl');
         fastDecomposition = cwt(Data.SSRef(ref_wave, actual_start(n) : actual_end(n)), scale_fast, 'morl');
         
-        slowBeforeSpindleDecomposition = cwt(Data.SSRef(ref_wave, actual_start(n)-Info.Recording.sRate*2.5 : actual_end(n)-Info.Recording.sRate*0.5), scale_slow, 'morl');
-        fastBeforeSpindleDecomposition = cwt(Data.SSRef(ref_wave, actual_start(n)-Info.Recording.sRate*2.5 : actual_end(n)-Info.Recording.sRate*0.5), scale_fast, 'morl');
-       
-        slowBeforeSpindleDecomposition = repmat(mean(abs(slowBeforeSpindleDecomposition), 2), [1,size(slowDecomposition,2)]);
-        fastBeforeSpindleDecomposition = repmat(mean(abs(fastBeforeSpindleDecomposition), 2), [1,size(fastDecomposition,2)]);
-        nFreq = repmat(frequency_range{2},[size(fastDecomposition,2), 1]);
+        spindleDecomposition = cwt(Data.SSRef(ref_wave, actual_start(n) : actual_end(n)), scale_spindle, 'morl');
+
+        if actual_start(n)-Info.Recording.sRate*2.5 > 0
+            beforeSpindleDecomposition = cwt(Data.SSRef(ref_wave, actual_start(n)-Info.Recording.sRate*2.5 : actual_end(n)-Info.Recording.sRate*0.5), scale_spindle, 'morl');
+            beforeSpindleDecomposition = repmat(mean(abs(beforeSpindleDecomposition), 2), [1,size(spindleDecomposition,2)]);      
+            [~, p] = max(mean(abs(spindleDecomposition./beforeSpindleDecomposition), 2));
+            freq = frequency_range{4}(p);
+        else
+            freq = 10;
+        end
+        
         slow_data = mean(slowDecomposition, 1);
         fast_data = mean(fastDecomposition, 1);
         [~, type] = max([max(abs(slow_data)), max(abs(fast_data))]);
         
         if type == 1 
             typeName = 'slow';
-%             [~, p] = max(max(abs(slowDecomposition),[],2));
-            [~, p] = max(mean(abs(slowDecomposition./slowBeforeSpindleDecomposition), 2));
-%             [~, p] = max(mean(abs(slowDecomposition.*nFreq'), 2));
-            freq = frequency_range{2}(p);
         else
             typeName = 'fast';
-%             [~, p] = max(max(abs(fastDecomposition),[],2));
-            [~, p] = max(mean(abs(fastDecomposition./fastBeforeSpindleDecomposition), 2));
-            freq = frequency_range{3}(p);
         end
-        
-%         if freq < Info.Parameters.Filter_hPass(1) || freq > Info.Parameters.Filter_lPass(2)
-%             freq = 0;
-%         end
-        
+                
         % -- Save Wave to Structure -- %
         % Check if the SS has already been found in another reference channel
         if ref_wave > 1

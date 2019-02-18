@@ -5,7 +5,7 @@ addpath('/home/borear/Documents/Research/Source/matlab_toolboxes/eeglab');
 addpath('/media/Data/softs/spindlesDetection');
 addpath(genpath('/home/borear/Documents/Research/Source/matlab_toolboxes/swa-matlab/'))
 
-eeglab 
+eeglab
 close(gcf)
 clc
 clear all
@@ -20,6 +20,35 @@ badintervalsFolder = [maindir filesep 'BadInterval_Markers' filesep];
 outputeegFolder = [maindir filesep 'Output_eeg_files' filesep];
 
 allFiles = dir([ eegFolder 'Olfacto*.dat']);
+
+% for iFile=85%:length(allFiles)
+%     
+%     o_name = strsplit(allFiles(iFile).name,'_');
+%     o_name = char(o_name(2));
+%     out_name = ['o_' o_name '.mat'];
+%     
+%     eeg_name = [eegFolder allFiles(iFile).name];
+%     vmrk_name = [eegFolder allFiles(iFile).name(1:end-3) 'vmrk'];
+%     scoring_name = [scoringFolder 'OlfactoSleep_' o_name '_ExpRaw_Data.mat'];
+%     disp(['Subject: ' num2str(iFile)])
+%     disp(['Analysis: ' allFiles(iFile).name]);
+%     if exist(vmrk_name,'file') && ...
+%        exist([outputeegFolder out_name],'file') && ...
+%        exist(scoring_name,'file')
+%         
+%         
+%         ld_exportSpindlesAndScoring2vmrk([outputeegFolder out_name], ...
+%                                      scoring_name, ...
+%                                      [3 4 5], ...
+%                                      'All', ...
+%                                      vmrk_name);
+%     else
+%         disp(['Some files are missing'])
+%     end
+%     
+% end
+
+% test = 1
 
 % Spindle Detection %
 % ----------------- %
@@ -70,31 +99,28 @@ for iFile=1:length(allFiles)
 
             Data.Raw = EEG.data;
             
-%             if strcmp(o_name,'033CR') % 033CR
-%                 Data.SSRef = Data.Raw([1 2 3 5 6 7 8 9 10],:);
-%                 currentChanInfos(4) = [];
-%             elseif strcmp(o_name,'309TJ') %309TJ
-%       	        Data.SSRef = Data.Raw([1 2 3 4 5 6 8 9 10],:);
-%      	        currentChanInfos(7) = [];
-%             elseif strcmp(o_name,'455CW') %455CW
-%                 Data.SSRef = Data.Raw([1 3 8 9 10],:);
-%                 currentChanInfos(7) = [];
-%                 currentChanInfos(6) = [];
-%                 currentChanInfos(5) = [];
-%                 currentChanInfos(4) = [];
-%                 currentChanInfos(2) = [];
-%             elseif strcmp(o_name,'409RD') %409RD
-%       	        Data.SSRef = Data.Raw([1 2 3 4 5 6 8 9 10],:);
-%                 currentChanInfos(7) = [];
-% %             elseif strcmp(o_name,'430PL') %430PL
-% %       	        Data.SSRef = Data.Raw([1 2 3 4 5 6 7 9 10],:);
-% %                 currentChanInfos(8) = [];
-%             else
-%                 
-%             end
-            
-            Data.SSRef = Data.Raw;
-            
+            if strcmp(o_name,'033CR') % 033CR
+                Data.SSRef = Data.Raw([1 2 3 5 6 7 8 9 10],:);
+                currentChanInfos(4) = [];
+            elseif strcmp(o_name,'309TJ') %309TJ
+      	        Data.SSRef = Data.Raw([1 2 3 4 5 6 8 9 10],:);
+     	        currentChanInfos(7) = [];
+            elseif strcmp(o_name,'455CW') %455CW
+                Data.SSRef = Data.Raw([1 3 8 9 10],:);
+                currentChanInfos(7) = [];
+                currentChanInfos(6) = [];
+                currentChanInfos(5) = [];
+                currentChanInfos(4) = [];
+                currentChanInfos(2) = [];
+            elseif strcmp(o_name,'409RD') %409RD
+      	        Data.SSRef = Data.Raw([1 2 3 4 5 6 8 9 10],:);
+                currentChanInfos(7) = [];
+%             elseif strcmp(o_name,'430PL') %430PL
+%       	        Data.SSRef = Data.Raw([1 2 3 4 5 6 7 9 10],:);
+%                 currentChanInfos(8) = [];
+            else
+                Data.SSRef = Data.Raw;
+            end
             
             Info.Electrodes = currentChanInfos;
             
@@ -149,6 +175,7 @@ for iFile=1:length(allFiles)
         catch
             disp(['Error ld_exportSpindlesAndScoring2vmrk function: ' allFiles(iFile).name])
         end
+        
     end
 end
 
