@@ -89,7 +89,7 @@ for nType=1:length(mkType)     % Remove duplicate
     o_markers.(typeName) = o_markers.(typeName)(idx);
 end
 
-if ~isfield(o_markers, 'Scoring')
+if ~isfield(o_markers, 'Scoring') && nargin>1
     scoring = load(i_scoringFile);
     o_markers.Scoring = [];
     stageScoringName = {'wake','NREM1','NREM2','NREM3','NREM4','REM','movement','unscored'}; % Sleep stages Olfacto
