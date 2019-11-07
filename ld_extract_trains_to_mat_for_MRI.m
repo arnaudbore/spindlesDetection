@@ -47,8 +47,6 @@ for nNight=1:2
                         markers.SpGrouped(1:nbSpindles) = [];
                     end
                     
-                    grouped.nbTotal = currentTrainInfo.spindlesGrouped.nb;
-                    
                     % Isolated spindles
                     isolated.onsets = [markers.SpNotGrouped.position]'/250;
                     isolated.durations = [markers.SpNotGrouped.length]'/250;
